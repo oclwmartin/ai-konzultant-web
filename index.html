@@ -1140,6 +1140,30 @@ nav.scrolled {
 
 textarea.form-input { resize: vertical; min-height: 120px; }
 
+.form-submit { width: 100%; justify-content: center; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: var(--sp-8); left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border-md);
+  padding: var(--sp-4) var(--sp-8); border-radius: var(--r-lg);
+  font-size: var(--text-sm); font-weight: 500;
+  box-shadow: var(--sh-lg); z-index: 9999;
+  opacity: 0; transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+  pointer-events: none;
+}
+.toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--error { border-color: #e74c3c; color: #e74c3c; }
+
+/* Spinner */
+.spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid var(--text-faint); border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .form-submit {
   width: 100%;
   justify-content: center;
@@ -1907,7 +1931,7 @@ footer {
       </div>
 
       <div class="form-card reveal-io">
-        <form action="https://formspree.io/f/mjgpqzzk" method="POST">
+        <form id="contact-form" action="https://formspree.io/f/mjgpqzzk" method="POST">
           <div class="form-row">
             <label class="form-label" for="name" data-cs="Jméno" data-en="Name">Jméno</label>
             <input class="form-input" type="text" id="name" name="name"
@@ -2130,6 +2154,50 @@ const countIO = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 
 counters.forEach(c => countIO.observe(c));
+
+/* ===========================
+   FORM SUBMIT (AJAX + TOAST)
+=========================== */
+const contactForm = document.getElementById('contact-form');
+if (contactForm) {
+  contactForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = contactForm.querySelector('.form-submit');
+    const origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> ' + (lang === 'cs' ? 'Odesílám...' : 'Sending...');
+
+    try {
+      const res = await fetch(contactForm.action, {
+        method: 'POST',
+        body: new FormData(contactForm),
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        showToast(lang === 'cs' ? 'Zpráva byla úspěšně odeslána!' : 'Message sent successfully!');
+        contactForm.reset();
+      } else {
+        showToast(lang === 'cs' ? 'Chyba při odesílání. Zkuste to prosím znovu.' : 'Error sending message. Please try again.', true);
+      }
+    } catch {
+      showToast(lang === 'cs' ? 'Chyba připojení. Zkuste to prosím znovu.' : 'Connection error. Please try again.', true);
+    }
+    btn.disabled = false;
+    btn.innerHTML = origHTML;
+  });
+}
+
+function showToast(msg, isError) {
+  let toast = document.createElement('div');
+  toast.className = 'toast' + (isError ? ' toast--error' : '');
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => { toast.classList.add('toast--visible'); });
+  setTimeout(() => {
+    toast.classList.remove('toast--visible');
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
 </script>
 </body>
 </html>
